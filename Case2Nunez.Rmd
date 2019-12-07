@@ -1,0 +1,359 @@
+---
+title: "DDS Case Study 2 - Firto Lay"
+author: "Edgar Nunez"
+date: "12/5/2019"
+output: html_document
+Video: https://www.youtube.com/watch?v=dVt8dIqGLYs
+---
+The folowing is an analysis of the Case Study 2 data set for Frito Lay's Employee Attrition. The objectives of this analysis are to identify factors that lead to attrition and to build a model to predict attrition.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+#install packages
+#install.packages("corrplot")
+#install.packages('class')
+
+#Loading Libraries
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(stringr)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(class)
+library(caret)
+
+# Read the csv data file
+CaseStudy2Data <- read.csv("C:/Users/edgar_000/OneDrive/SMU/6306 Doing Data Science/DDS Case Study 2/Data/CaseStudy2-data.csv")
+
+```
+
+## R Markdown
+
+##Data exploration and preparation analysis
+
+```{r Data Summary}
+summary(CaseStudy2Data)
+```
+
+#Data Structure
+```{r Data Structure}
+str(CaseStudy2Data)
+```
+
+#Data Dimension
+```{r Data Dimension}
+dim(CaseStudy2Data)
+```
+## UNivariate and Bi-variate analysis
+## Correlation Plot
+```{r Correlation Plot}
+numeric_CaseStudy2Data <- CaseStudy2Data[,c(2, 5, 7, 8, 11, 12, 14, 15, 16, 18, 20, 21, 22, 25, 26, 27, 29:36)]
+numeric_Attrition = as.numeric(CaseStudy2Data$Attrition)- 1
+numeric_CaseStudy2Data = cbind(numeric_CaseStudy2Data, numeric_Attrition)
+str(numeric_CaseStudy2Data)
+library(corrplot)
+M <- cor(numeric_CaseStudy2Data)
+corrplot(M, method="circle")
+```
+The correlation analysis reveled the following findings:
+the strongest correlation is between JobLevel and Monthly income, with correlation at 0.95
+the more total working years, the more Job Level, with correlation at 0.780
+the more total working years, the more Monthly Income, with correlation at 0.778
+the more performance rating, the more Percent salary hike, with correlation at 0.775
+the more yearsatcompany, the more yearsInCurrentRole, with correlation at 0.776
+the more yearswithcurrmanager, the more yearsatcompany, with correlation at  0.765
+the more yearswithcurrmanager, the more yearsincurrentrole, with correlation at 0.709
+
+
+```{r which correlations are bigger than 0.70, echo=FALSE}
+#Determine which correlations are bigger than 0.70 and how many are there
+k = 0
+for(i in 1:25){
+for(r in 1:25){
+  if(M[i,r]> 0.70 & i != r){
+    k= k + 1
+    print(i)
+    print(', ')
+    print(r)
+    print(M[i,r])
+    }
+
+}  }
+print("how many:")
+print(k/2)
+```
+
+## The Overtime vs Attiriton plot shows that, personnel who works more over time have more Attrition
+```{r Overtime vs Attiriton plot}
+### Overtime vs Attiriton
+l <- ggplot(CaseStudy2Data, aes(OverTime,fill = Attrition))
+l <- l + geom_histogram(stat="count")
+print(l)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$OverTime,mean)
+```
+### The MaritalStatus vs Attiriton show that personnel who are single have a higher attrition rate and divorced personnel has the lowest attrition. However, married personnelhas the lowes attrition rate.
+```{r}
+### MaritalStatus vs Attiriton
+MaritalStatus_Attiriton <- ggplot(CaseStudy2Data, aes(MaritalStatus,fill = Attrition))
+MaritalStatus_Attiriton <- MaritalStatus_Attiriton + geom_histogram(stat="count")
+print(MaritalStatus_Attiriton)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$MaritalStatus,mean)
+```
+## The JobRole vs Attrition plot shows that Laboratory Technician, Human Resources and Sales Representative roles have more attrition.
+```{r}
+###JobRole vs Attrition
+JobRole_Attrition <- ggplot(CaseStudy2Data, aes(JobRole,fill = Attrition))
+JobRole_Attrition <- JobRole_Attrition + geom_histogram(stat="count")
+print(JobRole_Attrition)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$JobRole,mean)
+mean(as.numeric(CaseStudy2Data$Attrition) - 1)
+```
+## The Gender vs Attrition plot shows that the gender characteristic is not significnt
+```{r}
+###Gender vs Attrition
+Gender_Attrition <- ggplot(CaseStudy2Data, aes(Gender,fill = Attrition))
+Gender_Attrition <- Gender_Attrition + geom_histogram(stat="count")
+print(Gender_Attrition)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$Gender,mean)
+```
+## The Education Field vs Attrition plot shows that Technical Degree and Human Resources have the highest attrition ratios.
+```{r}
+###EducationField vs Attrition
+EducationField_Attrition <- ggplot(CaseStudy2Data, aes(EducationField,fill = Attrition))
+EducationField_Attrition <- EducationField_Attrition + geom_histogram(stat="count")
+print(EducationField_Attrition)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$EducationField,mean)
+```
+## The Department vs Attrition plot show that the department attrition ratios are not significant
+```{r}
+###Department vs Attrition
+Department_Attrition <- ggplot(CaseStudy2Data, aes(Department,fill = Attrition))
+Department_Attrition <- Department_Attrition + geom_histogram(stat="count")
+print(Department_Attrition)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$Department,mean)
+```
+## The BusinessTravel vs Attrition plot shows that the ratio of attrition increases with increases in travel frequency increases.
+```{r}
+###BusinessTravel vs Attrition
+BusinessTravel_Attrition <- ggplot(CaseStudy2Data, aes(BusinessTravel,fill = Attrition))
+BusinessTravel_Attrition <- BusinessTravel_Attrition + geom_histogram(stat="count")
+print(BusinessTravel_Attrition)
+tapply(as.numeric(CaseStudy2Data$Attrition) - 1 ,CaseStudy2Data$BusinessTravel,mean)
+```
+#Apparently, attrition ratio is cumulative when the following conditions are present: 
+#OverTime = Yes, Marial_Status = Single & Age < 35
+```{r}
+### x=Overtime, y= Age, z = MaritalStatus , t = Attrition
+ggplot(CaseStudy2Data, aes(OverTime, Age)) +  
+  facet_grid(.~MaritalStatus) +
+  geom_jitter(aes(color = Attrition),alpha = 0.4) +  
+  ggtitle("x=Overtime, y= Age, z = MaritalStatus , t = Attrition") +  
+  theme_light()
+```
+# The MonthlyIncome vs. Age plot shows that there is a tendency for MonthlyIncome to increase as Age increases.
+# Attrition frequency tends to decrease as monthly income increases
+```{r}
+### MonthlyIncome vs. Age, by  color = Attrition
+ggplot(CaseStudy2Data, aes(MonthlyIncome, Age, color = Attrition)) + 
+  geom_jitter() +
+  ggtitle("MonthlyIncome vs. Age, by  color = Attrition ") +
+  theme_light()
+```
+
+
+#Predicting attrition with KNN regression :
+```{r}
+library(caTools)
+library(e1071)
+library(glmnet)
+
+#let’s take a look at the structure of the dataset
+str(CaseStudy2Data)
+
+```
+#Create a subset without unnecesarry variables. From the previous exploratory analysis we have an idea of what predictor variables are significant 
+```{r}
+#Age, BusinessTravel, EducationField, JobRole,  MaritalStatus, MonthlyIncome, OverTime
+CaseStudy2Data.subset <- CaseStudy2Data[c(2, 4, 9, 17, 19, 20, 24)]
+
+#Norrowed down the predictors to 7 variables that are significant for building the model
+str(CaseStudy2Data.subset)
+```
+# Data Normalization
+# We always normalize the data set so that the output remains unbiased
+```{r}
+
+#Normalization
+normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x))) }
+
+#storing the data set with normalized numeric variables in the ‘CaseStudy2Data.subset.n’ variable
+CaseStudy2Data.subset.n <- as.data.frame(lapply(CaseStudy2Data.subset[,c(1,6)], normalize))
+head(CaseStudy2Data.subset.n)
+
+```
+#Data Splicing: splitting the data set into 80% training and 20% testing data set
+```{r}
+set.seed(9850)
+data.split <- sample(1:nrow(CaseStudy2Data.subset.n),size=nrow(CaseStudy2Data.subset.n)*0.8, replace = FALSE) #random selection of 80% data.
+ 
+train.attrition <- CaseStudy2Data.subset[data.split,] # 80% training data
+test.attrition <- CaseStudy2Data.subset[-data.split,] # remaining 20% test data
+
+```
+## Creating seperate dataframe for the 'Attrition' feature which is the prediction's target, so that the predicted values can be compared with the actual value
+```{r}
+train.attrition_labels <- CaseStudy2Data.subset[data.split,1]
+test.attrition_labels <-CaseStudy2Data.subset[-data.split,1]
+```
+#Building a Machine Learning model based on the KNN algorithmby using the training data set 
+```{r}
+#Find the number of observation in the training dataset to calculate the optimal K value using the square root of the total number of observations in the data set
+
+NROW(train.attrition_labels)
+sqrt(NROW(train.attrition_labels))
+
+```
+# There are 696 observations in the training data set. The square root of 696 is around 26.38, therefore we’ll create two models. One with ‘K’ value as 26 and the other model with a ‘K’ value as 27.
+```{r}
+#Create train and test datasets with only numeric values
+train_numeric = train.attrition[, c(1,6)]
+test_numeric = test.attrition[, c(1,6)]
+
+knn.26 <- knn(train=train_numeric, test=test_numeric, cl=train.attrition_labels, k=26)
+knn.27 <- knn(train=train_numeric, test=test_numeric, cl=train.attrition_labels, k=27)
+```
+# Model Evaluation to calculate the accuracy of the  models created
+```{r}
+#Calculate the proportion of correct classification for k = 26, 27
+ACC.26 <- 100 * sum(test.attrition_labels == knn.26)/NROW(test.attrition_labels)
+ACC.27 <- 100 * sum(test.attrition_labels == knn.27)/NROW(test.attrition_labels)
+ 
+ACC.26
+ACC.27
+
+# Check prediction against actual value in tabular form for k=26
+table(knn.26 ,test.attrition_labels)
+```
+
+#ptimization
+```{r}
+i=1
+k.optm=1
+for (i in 1:36){
+knn.mod <- knn(train=train_numeric, test=test_numeric, cl=train.attrition_labels, k=i)
+k.optm[i] <- 100 * sum(test.attrition_labels == knn.mod)/NROW(test.attrition_labels)
+k=i
+cat(k,'=',k.optm[i],'
+')
+}
+```
+# The accurracy plot shows that even after optimization this model's best accuracy level is 7.47 for k = 26. 
+```{r}
+#Accuracy plot
+plot(k.optm, type="b", xlab="K- Value",ylab="Accuracy level")
+```
+
+
+#Predicting attrition with logistic regression :
+```{r}
+#Create a new data set without unnecesary variables
+CaseStudy2Datanew = CaseStudy2Data[,-c(7,10,23)]
+str(CaseStudy2Datanew)
+```
+#Split the data into 80% training set and 20% test set, using a different method 
+```{r}
+library(caTools)
+library(e1071)
+library(glmnet)
+
+#Splitting data
+split <- sample.split(CaseStudy2Datanew$Attrition, SplitRatio = 0.80) 
+train_lattrition <- subset(CaseStudy2Datanew, split == T) 
+test_lattrition <- subset(CaseStudy2Datanew, split == F)
+```
+
+#Logistic regresion model
+```{r}
+model_glm <- glm(Attrition ~ ., data = train_lattrition , family='binomial') 
+predicted_attrition <- predict(model_glm, test_lattrition, type='response')
+predicted_attrition <- ifelse(predicted_attrition > 0.5,1,0)
+write.csv(predicted_attrition, "C:/Users/edgar_000/OneDrive/SMU/6306 Doing Data Science/DDS Case Study 2/Data/Case2PredictionsNunez Attrition.csv", col.names = c("ID", "Attrition"))
+
+```
+# The following contains the predicted attrition values based on logistic regression model. The calculated prediction accuracy of the logistic regression model is about 0.83
+```{r}
+table(test_lattrition$Attrition, predicted_attrition)
+
+```
+#Prediction accuracy
+```{r}
+print((136+9)/174)
+```
+#Sensitivity and Spcfificity of this model
+```{r}
+#sensitivity(model_glm, predicted_attrition)
+#specificity(model_glm, predicted_attrition)
+```
+
+
+#Linear regression topredict monthly income
+
+```{r}
+CaseStudy2Data.reg_subset <- CaseStudy2Data[c(2, 4, 9, 17, 19, 20, 24, 28:36)]
+
+#storing the data set with normalized numeric variables in the ‘CaseStudy2Data.subset.n’ variable
+CaseStudy2Data.reg_subset.n <- as.data.frame(lapply(CaseStudy2Data.reg_subset[,c(1,16)], normalize))
+head(CaseStudy2Data.reg_subset.n)
+
+#Data Splicing: splitting the data set into 80% training and 20% testing data set
+set.seed(9850)
+regression.split <- sample(1:nrow(CaseStudy2Data.reg_subset.n ),size=nrow(CaseStudy2Data.reg_subset.n)*0.8, replace = FALSE) #random selection of 80% data.
+ 
+train.regattrition <- CaseStudy2Data.reg_subset[data.split,] # 80% training data
+test.regattrition <- CaseStudy2Data.reg_subset[-data.split,] # remaining 20% test data
+```
+
+#Data Exploration
+```{r}
+scatter.smooth(x=train.regattrition$TotalWorkingYears, y=train.regattrition$MonthlyIncome, main="Monthly Income ~ Total Working Years") # scatterplot
+
+```
+
+#Strong positive correlation between Total Working Years and Monthly Income
+```{r}
+# Finding correlation
+cor(train.regattrition$TotalWorkingYears, train.regattrition$MonthlyIncome)
+```
+# Fitting Simple Linear regression
+# For every 1 year increase in TotalWorkingYears the MonthlyIncome increases by 475.7, starting at a base monthly income of 1117.8 with a 95% confidence level, p-value: < 2.2e-16
+```{r}
+regressor = lm(formula = MonthlyIncome ~ TotalWorkingYears, data = train.regattrition)
+print(regressor)
+
+#the model p-value and independent variable’s p-value are less than the pre-determined standard significance level (0.05). Thus, we can conclude that this model is statistically significant.
+summary(regressor)
+
+```
+
+
+# Predicting the test results
+```{r}
+MonthlyIncome_pred = predict(regressor, newdata = test.regattrition)
+summary(regressor)
+```
+#Finding accuracy of the model
+# From the results we can see this model is not very accurate. To improve accuracy, we can train the model on a bigger data set and try to use other predictor variables.
+```{r}
+actuals_MonthlyIncome_preds <- data.frame(cbind(actuals=test.regattrition$MonthlyIncome, predicted=MonthlyIncome_pred))
+correlation_accuracy <- cor(actuals_MonthlyIncome_preds)
+head(actuals_MonthlyIncome_preds)
+```
+#Monthly Salary predictions 
+```{r}
+write.csv(MonthlyIncome_pred, "C:/Users/edgar_000/OneDrive/SMU/6306 Doing Data Science/DDS Case Study 2/Data/Case2PredictionsNunez Salary.csv", col.names = c("ID", "MonthlyIncome
+"))
+```
+
